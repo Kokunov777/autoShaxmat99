@@ -13,7 +13,7 @@ namespace WinFormsApp1
         private Label currentPlayerLabel;
         private Label moveInstructionsLabel;
 
-        private Board board; // Логика шахматной доски
+        private string[,] board; // Состояние шахматной доски
         private string currentPlayer; // Текущий игрок
 
         public Form1()
@@ -23,14 +23,14 @@ namespace WinFormsApp1
             try
             {
                 // Инициализация доски и игрока
-                board = new Board(8, 8);
+                board = InitializeBoard();
                 currentPlayer = "Белый";
 
                 // Создаем элементы интерфейса
                 InitializeUI();
             }
             catch (Exception ex)
-            {
+            {                                                                                                                                           
                 MessageBox.Show($"Ошибка инициализации: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -49,7 +49,7 @@ namespace WinFormsApp1
                     RowHeadersWidth = 50,
                     ColumnHeadersHeight = 30,
                     Dock = DockStyle.Top,
-                    Height = 600, // Задаем высоту шахматной доски
+                    Height = 600,
                     Width = 600,
                 };
                 this.Controls.Add(dataGridView1);
@@ -59,8 +59,9 @@ namespace WinFormsApp1
                 {
                     Text = "Ход: Белый",
                     Dock = DockStyle.Top,
-                    TextAlign = System.Drawing.ContentAlignment.MiddleCenter,
-                    Height = 40
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Height = 40,
+                    Font = new Font("Arial", 16, FontStyle.Bold)
                 };
                 this.Controls.Add(currentPlayerLabel);
 
@@ -69,16 +70,17 @@ namespace WinFormsApp1
                 {
                     Text = "Введите ход (например, e2 e4):",
                     Dock = DockStyle.Top,
-                    TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-                    Height = 40
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Height = 40,
+                    Font = new Font("Arial", 16, FontStyle.Bold)
                 };
                 this.Controls.Add(moveInstructionsLabel);
 
                 // Создание текстового поля для ввода хода
                 moveTextBox = new TextBox
                 {
-                    //  PlaceholderText = "Введите ход (например, e2 e4)",
-                    Dock = DockStyle.Top
+                    Dock = DockStyle.Top,
+                    Font = new Font("Arial", 16, FontStyle.Bold)
                 };
                 this.Controls.Add(moveTextBox);
 
@@ -88,9 +90,19 @@ namespace WinFormsApp1
                     Text = "Сделать ход",
                     Dock = DockStyle.Top,
                     Height = 50,
+                    Font = new Font("Arial", 16, FontStyle.Bold)
                 };
                 makeMoveButton.Click += MakeMoveButton_Click;
                 this.Controls.Add(makeMoveButton);
+                this.KeyPreview = true;
+
+                this.KeyDown += (s, e) =>
+                {
+                    if (e.KeyCode == Keys.Enter) // Связываем с клавишей Ентер
+                    {
+                        makeMoveButton.PerformClick(); // Нажатие
+                    }
+                };
 
                 // Настраиваем шахматную доску
                 InitializeChessBoard();
@@ -101,38 +113,43 @@ namespace WinFormsApp1
             }
         }
 
+        private string[,] InitializeBoard()
+        {
+            string[,] initialBoard = new string[8, 8]
+            {
+                { "♜", "♞", "♝", "♛", "♚", "♝", "♞", "♜" },
+                { "♟", "♟", "♟", "♟", "♟", "♟", "♟", "♟" },
+                { " ", " ", " ", " ", " ", " ", " ", " " },
+                { " ", " ", " ", " ", " ", " ", " ", " " },
+                { " ", " ", " ", " ", " ", " ", " ", " " },
+                { " ", " ", " ", " ", " ", " ", " ", " " },
+                { "♙", "♙", "♙", "♙", "♙", "♙", "♙", "♙" },
+                { "♖", "♘", "♗", "♕", "♔", "♗", "♘", "♖" }
+            };
+            return initialBoard;
+        }
+
         private void InitializeChessBoard()
         {
             try
             {
-                // Устанавливаем размер DataGridView в зависимости от размеров доски
-                dataGridView1.ColumnCount = board.Width;
-                dataGridView1.RowCount = board.Height;
+                dataGridView1.ColumnCount = 8;
+                dataGridView1.RowCount = 8;
 
-                // Настроим заголовки строк и столбцов
-                for (int i = 0; i < board.Height; i++)
+                for (int i = 0; i < 8; i++)
                 {
-                    // Меняем индексацию строк с 1 до 8 на 8 до 1
-                    dataGridView1.Rows[i].HeaderCell.Value = (i + 1).ToString();
+                    dataGridView1.Rows[i].HeaderCell.Value = (8 - i).ToString();
+                    dataGridView1.Columns[i].HeaderText = ((char)('a' + i)).ToString();
+                    dataGridView1.Columns[i].Width = 70;
                 }
 
-                for (int j = 0; j < board.Width; j++)
-                {
-                    dataGridView1.Columns[j].HeaderText = ((char)('a' + j)).ToString();
-                    dataGridView1.Columns[j].Width = 70; // Фиксированная ширина столбцов
-                }
-
-                // Увеличиваем высоту строк для отображения более крупных фигур
                 foreach (DataGridViewRow row in dataGridView1.Rows)
                 {
-                    row.Height = 70; // Увеличиваем высоту строк
+                    row.Height = 70;
                 }
 
-                // Настроим шрифт для отображения фигур
-                dataGridView1.DefaultCellStyle.Font = new Font("Arial", 30, FontStyle.Bold); // Увеличиваем размер шрифта
+                dataGridView1.DefaultCellStyle.Font = new Font("Arial", 30, FontStyle.Bold);
 
-
-                // Отображаем начальное состояние доски
                 UpdateBoardDisplay();
             }
             catch (Exception ex)
@@ -143,78 +160,59 @@ namespace WinFormsApp1
 
         private void UpdateBoardDisplay()
         {
-            try
+            for (int i = 0; i < 8; i++)
             {
-                // Обновляем содержимое DataGridView с перевернутой доской
-                for (int i = 0; i < board.Height; i++)
+                for (int j = 0; j < 8; j++)
                 {
-                    for (int j = 0; j < board.Width; j++)
-                    {
-                        // Переворачиваем строки, меняем индексы i и j
-                        dataGridView1.Rows[i].Cells[j].Value = board.Grid[board.Height - 1 - i, j];
-                    }
+                    dataGridView1.Rows[i].Cells[j].Value = board[i, j];
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка обновления доски: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void MakeMoveButton_Click(object sender, EventArgs e)
         {
-            try
+            string move = moveTextBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(move))
             {
-                string move = moveTextBox.Text.Trim();
-                if (string.IsNullOrWhiteSpace(move))
-                {
-                    MessageBox.Show("Введите ход, например, 'e2 e4'.", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                var parts = move.Split(' ');
-                if (parts.Length != 2)
-                {
-                    MessageBox.Show("Неверный формат. Используйте формат 'e2 e4'.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                var start = ParsePosition(parts[0]);
-                var target = ParsePosition(parts[1]);
-                if (!IsPositionValid(start) || !IsPositionValid(target))
-                {
-                    MessageBox.Show("Неверная позиция. Попробуйте снова.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                string piece = board.Grid[start.Item1, start.Item2];
-                if (string.IsNullOrEmpty(piece) || IsOpponentPiece(piece))
-                {
-                    MessageBox.Show("Неверный ход: в начальной позиции нет фигуры или это фигура противника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                if (board.IsMoveValid(piece, start.Item1, start.Item2, target.Item1, target.Item2))
-                {
-                    // Перемещаем фигуру
-                    board.Grid[target.Item1, target.Item2] = piece;
-                    board.Grid[start.Item1, start.Item2] = " ";
-
-                    // Обновляем отображение доски
-                    UpdateBoardDisplay();
-
-                    // Переключаем игрока
-                    currentPlayer = currentPlayer == "Белый" ? "Черный" : "Белый";
-                    currentPlayerLabel.Text = $"Ход: {currentPlayer}";
-                }
-                else
-                {
-                    MessageBox.Show("Неверный ход. Попробуйте снова.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
+                MessageBox.Show("Введите ход, например, 'e2 e4'.", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
-            catch (Exception ex)
+
+            var parts = move.Split(' ');
+            if (parts.Length != 2)
             {
-                MessageBox.Show($"Ошибка выполнения хода: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Неверный формат. Используйте формат 'e2 e4'.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var start = ParsePosition(parts[0]);
+            var target = ParsePosition(parts[1]);
+
+            if (!IsPositionValid(start) || !IsPositionValid(target))
+            {
+                MessageBox.Show("Неверная позиция. Попробуйте снова.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string piece = board[start.Item1, start.Item2];
+            if (string.IsNullOrEmpty(piece))
+            {
+                MessageBox.Show("В начальной позиции нет фигуры.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (IsMoveValid(piece, start, target))
+            {
+                board[target.Item1, target.Item2] = piece;
+                board[start.Item1, start.Item2] = " ";
+                UpdateBoardDisplay();
+
+                currentPlayer = currentPlayer == "Белый" ? "Черный" : "Белый";
+                currentPlayerLabel.Text = $"Ход: {currentPlayer}";
+            }
+            else
+            {
+                MessageBox.Show("Неверный ход. Попробуйте снова.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -223,169 +221,243 @@ namespace WinFormsApp1
             if (position.Length != 2) return (-1, -1);
 
             int x = position[0] - 'a';
-            if (!int.TryParse(position[1].ToString(), out int y)) return (-1, -1);
+            int y = 8 - (position[1] - '0');
 
-            // Переворачиваем строку
-            return (board.Height - y, x);
+            return (y, x);
         }
 
         private bool IsPositionValid((int, int) position)
         {
-            return position.Item1 >= 0 && position.Item1 < board.Height && position.Item2 >= 0 && position.Item2 < board.Width;
+            return position.Item1 >= 0 && position.Item1 < 8 && position.Item2 >= 0 && position.Item2 < 8;
         }
 
-        private bool IsOpponentPiece(string piece)
+        public enum PieceType
         {
-            return (currentPlayer == "Белый" && piece == "♟") || (currentPlayer == "Черный" && piece == "♙");
+            Pawn,
+            Knight,
+            Bishop,
+            Rook,
+            Queen,
+            King
         }
 
-        public class ChessLogic
+        public static PieceType GetPieceType(string piece)
         {
-            // Проверка на допустимость хода для конкретной фигуры
-            public bool IsMoveValid(string piece, int startX, int startY, int targetX, int targetY, string[,] board)
+            switch (piece)
             {
-                // Проверка границ доски
-                if (!IsWithinBounds(targetX, targetY))
-                    return false;
+                case "♙":
+                case "♟":
+                    return PieceType.Pawn;
+                case "♘":
+                case "♞":
+                    return PieceType.Knight;
+                case "♗":
+                case "♝":
+                    return PieceType.Bishop;
+                case "♖":
+                case "♜":
+                    return PieceType.Rook;
+                case "♕":
+                case "♛":
+                    return PieceType.Queen;
+                case "♔":
+                case "♚":
+                    return PieceType.King;
+                default:
+                    throw new ArgumentException("Неизвестная фигура");
 
-                switch (piece)
+            }
+        }
+
+        private bool IsMoveValid(string piece, (int, int) start, (int, int) target)
+        {
+            try
+            {
+                PieceType pieceType = GetPieceType(piece);
+
+                switch (pieceType)
                 {
-                    case "♙": // Белая пешка
-                        return IsWhitePawnMoveValid(startX, startY, targetX, targetY, board);
-                    case "♟": // Черная пешка
-                        return IsBlackPawnMoveValid(startX, startY, targetX, targetY, board);
-                    case "♖": // Ладья
-                        return IsRookMoveValid(startX, startY, targetX, targetY, board);
-                    case "♘": // Конь
-                        return IsKnightMoveValid(startX, startY, targetX, targetY);
-                    case "♗": // Слон
-                        return IsBishopMoveValid(startX, startY, targetX, targetY, board);
-                    case "♕": // Ферзь
-                        return IsQueenMoveValid(startX, startY, targetX, targetY, board);
-                    case "♔": // Король
-                        return IsKingMoveValid(startX, startY, targetX, targetY);
+                    case PieceType.Pawn:
+                        return IsPawnMoveValid(piece, start, target);
+                    case PieceType.Knight:
+                        return IsKnightMoveValid(start, target);
+                    case PieceType.Bishop:
+                        return IsBishopMoveValid(start, target);
+                    case PieceType.Rook:
+                        return IsRookMoveValid(start, target);
+                    case PieceType.Queen:
+                        return IsQueenMoveValid(start, target);
+                    case PieceType.King:
+                        return IsKingMoveValid(start, target);
                     default:
                         return false;
                 }
             }
-
-            // Проверка на нахождение в пределах доски
-            private bool IsWithinBounds(int x, int y)
+            catch (ArgumentException)
             {
-                return x >= 0 && x < 8 && y >= 0 && y < 8;
-            }
-
-            // Проверка для белой пешки
-            private bool IsWhitePawnMoveValid(int startX, int startY, int targetX, int targetY, string[,] board)
-            {
-                // Пешка может двигаться на одну клетку вперед
-                if (startX == targetX - 1 && startY == targetY && board[targetX, targetY] == " ")
-                    return true;
-
-                // Пешка может двигаться на две клетки вперед с начальной позиции
-                if (startX == 1 && targetX == 3 && startY == targetY && board[2, targetY] == " " && board[targetX, targetY] == " ")
-                    return true;
-
-                // Пешка может бить противника по диагонали
-                if (startX == targetX - 1 && Math.Abs(startY - targetY) == 1 && board[targetX, targetY] != " " && !IsSameColorPiece(board[startX, startY], board[targetX, targetY]))
-                    return true;
-
                 return false;
             }
 
-            // Проверка для черной пешки
-            private bool IsBlackPawnMoveValid(int startX, int startY, int targetX, int targetY, string[,] board)
+        }
+        public event Action OnBoardChanged;
+
+
+        public void MovePiece((int x, int y) start, (int x, int y) target)
+        {
+            string piece = board[start.x, start.y];
+            if (piece == " ")
             {
-                // Черная пешка движется в обратном направлении
-                if (startX == targetX + 1 && startY == targetY && board[targetX, targetY] == " ")
-                    return true;
-
-                // Черная пешка может двигаться на две клетки вперед с начальной позиции
-                if (startX == 6 && targetX == 4 && startY == targetY && board[5, targetY] == " " && board[targetX, targetY] == " ")
-                    return true;
-
-                // Черная пешка может бить противника по диагонали
-                if (startX == targetX + 1 && Math.Abs(startY - targetY) == 1 && board[targetX, targetY] != " " && !IsSameColorPiece(board[startX, startY], board[targetX, targetY]))
-                    return true;
-
-                return false;
+                return;
             }
 
-            // Проверка для ладьи
-            private bool IsRookMoveValid(int startX, int startY, int targetX, int targetY, string[,] board)
+            if (IsMoveValid(piece, start, target)) // Проверяем ход
             {
-                if (startX == targetX) // Горизонтальное движение
-                {
-                    int min = Math.Min(startY, targetY);
-                    int max = Math.Max(startY, targetY);
-                    for (int i = min + 1; i < max; i++)
-                    {
-                        if (board[startX, i] != " ")
-                            return false;
-                    }
-                    return true;
-                }
-                if (startY == targetY) // Вертикальное движение
-                {
-                    int min = Math.Min(startX, targetX);
-                    int max = Math.Max(startX, targetX);
-                    for (int i = min + 1; i < max; i++)
-                    {
-                        if (board[i, startY] != " ")
-                            return false;
-                    }
-                    return true;
-                }
-                return false;
-            }
-
-            // Проверка для коня
-            private bool IsKnightMoveValid(int startX, int startY, int targetX, int targetY)
-            {
-                // Конь двигается "буквой Г"
-                return (Math.Abs(startX - targetX) == 2 && Math.Abs(startY - targetY) == 1) || (Math.Abs(startX - targetX) == 1 && Math.Abs(startY - targetY) == 2);
-            }
-
-            // Проверка для слона
-            private bool IsBishopMoveValid(int startX, int startY, int targetX, int targetY, string[,] board)
-            {
-                if (Math.Abs(startX - targetX) != Math.Abs(startY - targetY))
-                    return false;
-
-                int xDirection = targetX > startX ? 1 : -1;
-                int yDirection = targetY > startY ? 1 : -1;
-                int x = startX + xDirection, y = startY + yDirection;
-
-                while (x != targetX && y != targetY)
-                {
-                    if (board[x, y] != " ")
-                        return false;
-                    x += xDirection;
-                    y += yDirection;
-                }
-                return true;
-            }
-
-            // Проверка для ферзя
-            private bool IsQueenMoveValid(int startX, int startY, int targetX, int targetY, string[,] board)
-            {
-                return IsRookMoveValid(startX, startY, targetX, targetY, board) || IsBishopMoveValid(startX, startY, targetX, targetY, board);
-            }
-
-            // Проверка для короля
-            private bool IsKingMoveValid(int startX, int startY, int targetX, int targetY)
-            {
-                return Math.Abs(startX - targetX) <= 1 && Math.Abs(startY - targetY) <= 1;
-            }
-
-            // Проверка на одинаковый цвет фигур
-            private bool IsSameColorPiece(string piece1, string piece2)
-            {
-                if (piece1 == " " || piece2 == " ")
-                    return false;
-                return char.IsUpper(piece1[0]) == char.IsUpper(piece2[0]); // Проверка на одинаковый цвет
+                board[target.x, target.y] = piece;
+                board[start.x, start.y] = " ";
+                OnBoardChanged?.Invoke();
             }
         }
 
-    } 
+
+        private bool IsPawnMoveValid(string piece, (int x, int y) start, (int x, int y) target)
+        {
+            int direction = piece == "♙" ? -1 : 1;
+            int startRow = piece == "♙" ? 6 : 1;
+
+            // Простое движение на одну клетку вперед
+            if (start.y == target.y && target.x - start.x == direction && board[target.x, target.y] == " ")
+            {
+                return true;
+            }
+
+            // Двойной шаг для пешки с начальной строки
+            if (start.y == target.y && start.x == startRow && target.x - start.x == 2 * direction && board[target.x, target.y] == " " && board[start.x + direction, start.y] == " ")
+            {
+                return true;
+            }
+
+            // Захват по диагонали
+            if (Math.Abs(start.y - target.y) == 1 && target.x - start.x == direction && board[target.x, target.y] != " " && !IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool IsKnightMoveValid((int x, int y) start, (int x, int y) target)
+        {
+            int dx = Math.Abs(start.y - target.y);
+            int dy = Math.Abs(start.x - target.x);
+
+            return (dx == 2 && dy == 1) || (dx == 1 && dy == 2);
+        }
+
+        private bool IsBishopMoveValid((int x, int y) start, (int x, int y) target)
+        {
+            int dx = Math.Abs(start.y - target.y);
+            int dy = Math.Abs(start.x - target.x);
+
+            if (dx != dy)
+                return false; // Слон должен двигаться по диагонали
+
+            // Проверка на наличие фигур на пути
+            int xStep = start.y < target.y ? 1 : -1;
+            int yStep = start.x < target.x ? 1 : -1;
+
+            int x = start.y + xStep;
+            int y = start.x + yStep;
+            while (x != target.y && y != target.x)
+            {
+                if (board[y, x] != " ")
+                    return false;
+                x += xStep;
+                y += yStep;
+            }
+            // проверка 
+            if (board[target.x, target.y] != " " && IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool IsRookMoveValid((int x, int y) start, (int x, int y) target)
+        {
+            if (start.x != target.x && start.y != target.y)
+                return false; // Ладья должна двигаться по прямой линии
+
+            // Проверка на наличие фигур на пути
+            int xStep = start.y == target.y ? 0 : (start.y < target.y ? 1 : -1);
+            int yStep = start.x == target.x ? 0 : (start.x < target.x ? 1 : -1);
+
+            int x = start.y + xStep;
+            int y = start.x + yStep;
+            while (x != target.y || y != target.x)
+            {
+                if (board[y, x] != " ")
+                    return false;
+                x += xStep;
+                y += yStep;
+            }
+            //проверка на конечную клетку
+            if (board[target.x, target.y] != " " && IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool IsQueenMoveValid((int x, int y) start, (int x, int y) target)
+        {
+            if (IsRookMoveValid(start, target))
+            {
+                if (board[target.x, target.y] != " " && IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
+                {
+                    return false;
+                }
+                return true;
+            }
+            if (IsBishopMoveValid(start, target))
+            {
+                if (board[target.x, target.y] != " " && IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
+                {
+                    return false;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        private bool IsKingMoveValid((int x, int y) start, (int x, int y) target)
+        {
+            int dx = Math.Abs(start.y - target.y);
+            int dy = Math.Abs(start.x - target.x);
+
+            if (dx > 1 || dy > 1)
+            {
+                return false; 
+            }
+
+            // Проверяем, не занята ли конечная клетка фигурой того же цвета
+            if (board[target.x, target.y] != " " && IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
+            {
+                return false; 
+            }
+
+            return true; 
+        }
+
+
+        // Проверка на одинаковый цвет фигур
+        private bool IsSameColorPiece(string piece1, string piece2)
+        {
+            if (piece1 == " " || piece2 == " ")
+                return false;
+            return (piece1 == piece1.ToUpper() && piece2 == piece2.ToUpper()) || (piece1 == piece1.ToLower() && piece2 == piece2.ToLower());
+        }
+
+    }
 }
