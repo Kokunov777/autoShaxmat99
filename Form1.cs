@@ -93,8 +93,11 @@ namespace WinFormsApp1
                     Font = new Font("Arial", 16, FontStyle.Bold)
                 };
                 makeMoveButton.Click += MakeMoveButton_Click;
-                this.Controls.Add(makeMoveButton);
+                moveTextBox.KeyDown += MoveTextBox_KeyDown;
+            
+                    this.Controls.Add(makeMoveButton);
                 this.KeyPreview = true;
+
 
                 this.KeyDown += (s, e) =>
                 {
@@ -104,8 +107,10 @@ namespace WinFormsApp1
                     }
                 };
 
-                // Настраиваем шахматную доску
-                InitializeChessBoard();
+               
+
+                    // Настраиваем шахматную доску
+                    InitializeChessBoard();
             }
             catch (Exception ex)
             {
@@ -113,7 +118,18 @@ namespace WinFormsApp1
             }
         }
 
-        private string[,] InitializeBoard()
+        private void MoveTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                // 4. Очищаем TextBox
+                moveTextBox.Text = "";
+                // Дополнительно: чтобы не остался звук "бип" при нажатии enter можно отметить событие как обработанное
+                e.Handled = true;
+
+            }
+        }
+            private string[,] InitializeBoard()
         {
             string[,] initialBoard = new string[8, 8]
             {
@@ -310,8 +326,9 @@ namespace WinFormsApp1
                 return;
             }
 
-            if (IsMoveValid(piece, start, target)) // Проверяем ход
+            if (IsMoveValid(piece, start, target))
             {
+                // Удалить фигуру, если она была на целевой клетке
                 board[target.x, target.y] = piece;
                 board[start.x, start.y] = " ";
                 OnBoardChanged?.Invoke();
@@ -319,24 +336,25 @@ namespace WinFormsApp1
         }
 
 
+
         private bool IsPawnMoveValid(string piece, (int x, int y) start, (int x, int y) target)
         {
-            int direction = piece == "♙" ? -1 : 1;
+            int direction = piece == "♙" ? -1 : 1; // -1 для белых, 1 для черных
             int startRow = piece == "♙" ? 6 : 1;
 
-            // Простое движение на одну клетку вперед
+            // Простое движение на одну клетку вперед (только если клетка пуста)
             if (start.y == target.y && target.x - start.x == direction && board[target.x, target.y] == " ")
             {
                 return true;
             }
 
-            // Двойной шаг для пешки с начальной строки
+            // Двойной шаг для пешки с начальной строки (только если обе клетки пусты)
             if (start.y == target.y && start.x == startRow && target.x - start.x == 2 * direction && board[target.x, target.y] == " " && board[start.x + direction, start.y] == " ")
             {
                 return true;
             }
 
-            // Захват по диагонали
+            // Захват по диагонали (только если клетка не пустая и фигура другого цвета)
             if (Math.Abs(start.y - target.y) == 1 && target.x - start.x == direction && board[target.x, target.y] != " " && !IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
             {
                 return true;
@@ -345,12 +363,21 @@ namespace WinFormsApp1
             return false;
         }
 
+
         private bool IsKnightMoveValid((int x, int y) start, (int x, int y) target)
         {
             int dx = Math.Abs(start.y - target.y);
             int dy = Math.Abs(start.x - target.x);
 
-            return (dx == 2 && dy == 1) || (dx == 1 && dy == 2);
+            if (!((dx == 2 && dy == 1) || (dx == 1 && dy == 2)))
+                return false;
+            // Проверка на конечную клетку
+            if (board[target.x, target.y] != " " && IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private bool IsBishopMoveValid((int x, int y) start, (int x, int y) target)
@@ -374,7 +401,7 @@ namespace WinFormsApp1
                 x += xStep;
                 y += yStep;
             }
-            // проверка 
+            // Проверка на конечную клетку
             if (board[target.x, target.y] != " " && IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
             {
                 return false;
@@ -401,7 +428,7 @@ namespace WinFormsApp1
                 x += xStep;
                 y += yStep;
             }
-            //проверка на конечную клетку
+            // Проверка на конечную клетку
             if (board[target.x, target.y] != " " && IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
             {
                 return false;
@@ -412,20 +439,17 @@ namespace WinFormsApp1
 
         private bool IsQueenMoveValid((int x, int y) start, (int x, int y) target)
         {
+            // Проверка для движения как ладья или как слон
             if (IsRookMoveValid(start, target))
             {
                 if (board[target.x, target.y] != " " && IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
-                {
                     return false;
-                }
                 return true;
             }
             if (IsBishopMoveValid(start, target))
             {
                 if (board[target.x, target.y] != " " && IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
-                {
                     return false;
-                }
                 return true;
             }
             return false;
@@ -437,17 +461,15 @@ namespace WinFormsApp1
             int dy = Math.Abs(start.x - target.x);
 
             if (dx > 1 || dy > 1)
-            {
-                return false; 
-            }
+                return false; // Король может двигаться только на 1 клетку
 
-            // Проверяем, не занята ли конечная клетка фигурой того же цвета
+            // Проверка на конечную клетку (нельзя атаковать свою фигуру)
             if (board[target.x, target.y] != " " && IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
             {
-                return false; 
+                return false;
             }
 
-            return true; 
+            return true;
         }
 
 
