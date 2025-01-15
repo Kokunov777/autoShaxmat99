@@ -107,8 +107,6 @@ namespace WinFormsApp1
                     }
                 };
 
-               
-
                     // Настраиваем шахматную доску
                     InitializeChessBoard();
             }
@@ -176,6 +174,7 @@ namespace WinFormsApp1
 
         private void UpdateBoardDisplay()
         {
+            
             for (int i = 0; i < 8; i++)
             {
                 for (int j = 0; j < 8; j++)
@@ -223,13 +222,46 @@ namespace WinFormsApp1
                 board[start.Item1, start.Item2] = " ";
                 UpdateBoardDisplay();
 
-                currentPlayer = currentPlayer == "Белый" ? "Черный" : "Белый";
-                currentPlayerLabel.Text = $"Ход: {currentPlayer}";
+                // Проверяем, остались ли короли на доске
+                if (!AreKingsPresent())
+                {
+                    string winner = currentPlayer == "Черный" ? "Белый" : "Черный";
+                    MessageBox.Show($"Игра окончена! Победитель: {winner}", "Конец игры", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    Application.Exit(); 
+                }
+                else
+                {
+                    // Меняем текущего игрока
+                    currentPlayer = currentPlayer == "Белый" ? "Черный" : "Белый";
+                    currentPlayerLabel.Text = $"Ход: {currentPlayer}";
+                }
             }
             else
             {
                 MessageBox.Show("Неверный ход. Попробуйте снова.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+        }
+
+        private bool AreKingsPresent()
+        {
+            bool whiteKingPresent = false;
+            bool blackKingPresent = false;
+
+            for (int i = 0; i < 8; i++)
+            {
+                for (int j = 0; j < 8; j++)
+                {
+                    if (board[i, j] == "♔")
+                        whiteKingPresent = true;
+                    if (board[i, j] == "♚")
+                        blackKingPresent = true;
+
+                    if (whiteKingPresent && blackKingPresent)
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         private (int, int) ParsePosition(string position)
