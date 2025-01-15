@@ -354,8 +354,9 @@ namespace WinFormsApp1
                 return true;
             }
 
-            // Захват по диагонали (только если клетка не пустая и фигура другого цвета)
-            if (Math.Abs(start.y - target.y) == 1 && target.x - start.x == direction && board[target.x, target.y] != " " && !IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
+            if (Math.Abs(start.y - target.y) == 1 && target.x - start.x == direction &&
+            board[target.x, target.y] != " " &&
+            !IsSameColorPiece(board[start.x, start.y], board[target.x, target.y]))
             {
                 return true;
             }
@@ -476,9 +477,19 @@ namespace WinFormsApp1
         // Проверка на одинаковый цвет фигур
         private bool IsSameColorPiece(string piece1, string piece2)
         {
-            if (piece1 == " " || piece2 == " ")
+            string whitePieces = "♙♖♘♗♕♔";
+            string blackPieces = "♟♜♞♝♛♚";
+
+            if (string.IsNullOrEmpty(piece1) || string.IsNullOrEmpty(piece2))
                 return false;
-            return (piece1 == piece1.ToUpper() && piece2 == piece2.ToUpper()) || (piece1 == piece1.ToLower() && piece2 == piece2.ToLower());
+
+            // Проверяем, принадлежат ли обе фигуры одному цвету
+            bool isWhite1 = whitePieces.Contains(piece1);
+            bool isWhite2 = whitePieces.Contains(piece2);
+            bool isBlack1 = blackPieces.Contains(piece1);
+            bool isBlack2 = blackPieces.Contains(piece2);
+
+            return (isWhite1 && isWhite2) || (isBlack1 && isBlack2);
         }
 
     }
